@@ -24,3 +24,4 @@ class Config:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///site.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAPS_DIRECTION_BASE = 'https://maps.googleapis.com/maps/api/directions/json'
+    GCP_API_KEY = 'AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg'

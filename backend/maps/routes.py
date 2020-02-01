@@ -159,7 +159,7 @@ def create_query_result():
         return json.dumps({'status': 3, 'message': "Requested query does not exist"})
     direction_raw_result = requests.post(f"{current_app.config['MAPS_DIRECTION_BASE']}?origin={query.entry_o}" +
                                          f"&destination={query.entry_d}&mode=driving" +
-                                         f"&key=AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg")
+                                         f"&key={current_app.config['GCP_API_KEY']}")
     direction_result = direction_raw_result.json()
     pp = pprint.PrettyPrinter()
     pp.pprint(direction_result)
