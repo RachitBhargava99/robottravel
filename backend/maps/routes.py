@@ -8,6 +8,8 @@ from backend import db
 from backend.models import User, Query
 from backend.users.utils import token_expiration_json_response
 
+import pprint
+
 maps = Blueprint('maps', __name__)
 
 
@@ -106,5 +108,8 @@ def create_query_result():
                                          f"&destination={query.entry_d}&mode=driving" +
                                          f"&key=AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg")
     direction_result = direction_raw_result.json()
+    pp = pprint.PrettyPrinter()
+    pp.pprint(direction_result)
+
     polyline = direction_result['routes'][0]['legs'][0]['polyline']['points']
     return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polyline': polyline})
