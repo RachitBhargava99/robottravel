@@ -12,12 +12,10 @@ import pprint
 
 maps = Blueprint('maps', __name__)
 
-
 # Checker to see whether or not is the ser ver running
 @maps.route('/map', methods=['GET'])
 def queue_checker():
     return "Hello"
-
 
 @maps.route('/map/query/new', methods=['POST'])
 def create_new_query():
@@ -61,8 +59,63 @@ def create_new_query():
     return json.dumps({'status': 0, 'message': "User query created successfully"})
 
 
-# TODO: Create a function to delete an existing query - use query_id and make sure that no other user can delete
-#  other people's queries
+#Function to delete an existing query 
+#using query_id and making sure of proper user
+#Brandon Wand
+@maps.route('/map/query/delete', methods=['POST'])
+def delete_query():
+    """
+    Delete's a users query based on query_id
+
+    Method Type
+    -----------
+    POST
+
+    JSON Parameters
+    ---------------
+    auth_token : str
+        Authentication of the logged in user
+    query_id : int
+        ID of the query for which we need to
+
+    Restrictions
+    ------------
+    User must be logged in
+    Query must belong to the logged in user
+
+    JSON Returns
+    ------------
+    status : int
+        Status code representing success status of the request
+    message : str
+        Message explaining the response status
+    polyline : str
+        Polyline representing points to visit - to be used by Google Maps
+    """
+    #verify user
+    request_json = request.get_json()
+    auth_token = request_json['auth_token']
+    user = User.verify_auth_token(auth_token)
+    if user is None:
+        return token_expiration_json_response 
+    #grab query_id
+    query_id = request_json['query_id']
+    #check if query_id is empty
+    if query_id is None:
+        return json.dumps({'status': 3, 'message': "query_id is of type None"})
+    query = Query.query.filter_by(id=query_id).first()
+    #check if query is empty
+    if query is None:
+        return json.dumps({'status': 3, 'message': "query is of type None"})
+    #make sure user id is the same as the query's user id
+    if user.id != query.user_id:
+        return json.dumps({'status': 3, 'message': "query does not belong to this user"})
+    #delete the query
+    query = Query.query.filter_by(id=query_id).delete()
+    #commit to database
+    db.session.commit()
+    #output success message
+    return json.dumps({'status': 0, 'message': "User query created successfully"})
 
 
 @maps.route('/map/query/result', methods=['POST'])
