@@ -41,6 +41,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(63), unique=True, nullable=False)
     password = db.Column(db.String(63), unique=False, nullable=False)
     access_level = db.Column(db.Integer, nullable=False, default=0)
+    slack_session = db.Column(db.String(127), nullable=True)
 
     def __init__(self, name: str, email: str, password: str, access_level: int = 0):
         """
@@ -191,20 +192,22 @@ class Tag(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     keyword = db.Column(db.String(127), nullable=False)
+    query_id = db.Column(db.Integer, db.ForeignKey('query.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-    def __init__(self, keyword: str, user_id: int):
+    def __init__(self, keyword: str, query_id: int, user_id: int):
         """
         Parameters
         ----------
-        entry_o : str
-            Origin location entry from user
-        entry_d : str
-            Destination Location entry from user
+        keyword : str
+            Keyword indicating user preference
+        query_id : int
+            Query ID of the query creator, as stored in User table
         user_id : int
             User ID of the query creator, as stored in User table
         """
         self.keyword = keyword
+        self.query_id = query_id
         self.user_id = user_id
 
 
@@ -226,6 +229,10 @@ class Location(db.Model):
         Longitude of sponsor location
     user_id : int
         User ID of the query creator, as stored in User table
+    is_sp : bool
+        Flag to denote whether or not is this a sponsor location
+    query_id : int
+        Query ID of the query creator, as stored in Query table
     """
 
     id = db.Column(db.Integer, primary_key=True)
@@ -233,8 +240,10 @@ class Location(db.Model):
     lat = db.Column(db.Float, nullable=False)
     lng = db.Column(db.Float, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_sp = db.Column(db.Boolean, nullable=False)
+    query_id = db.Column(db.Integer, db.ForeignKey('query.id'), nullable=True)
 
-    def __init__(self, keyword: str, lat: float, lng: float, user_id: int):
+    def __init__(self, keyword: str, lat: float, lng: float, user_id: int, query_id: int = -1, is_sp: bool = False):
         """
         Parameters
         ----------
@@ -246,8 +255,15 @@ class Location(db.Model):
             Longitude of sponsor location
         user_id : int
             User ID of the query creator, as stored in User table
+        is_sp : bool
+            Flag to denote whether or not is this a sponsor location
+        query_id : int
+            Query ID of the query creator, as stored in Query table
         """
         self.keyword = keyword
         self.lat = lat
         self.lng = lng
         self.user_id = user_id
+        self.is_sp = is_sp
+        if query_id != -1:
+            self.query_id = query_id

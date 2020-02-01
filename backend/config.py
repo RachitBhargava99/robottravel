@@ -25,4 +25,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAPS_DIRECTION_BASE = 'https://maps.googleapis.com/maps/api/directions/json'
     MAPS_PLACE_SEARCH_BASE = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
+    MAPS_PLACE_DETAIL_BASE = 'https://maps.googleapis.com/maps/api/place/details/json'
+    CARNIVAL_PORT_SEARCH_BASE = 'https://www.carnival.com/cruisesearch/api/search?excludeResults=true&numAdults=1' +\
+                                '&pageNumber=1&pageSize=100&showBest=true&sort=fromprice&useSuggestions=true'
     GCP_API_KEY = 'AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg'
