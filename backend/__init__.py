@@ -23,10 +23,10 @@ def create_app():
     ##    login_manager.init_app(app)
     mail.init_app(app)
 
+    from backend.users.routes import users
     from backend.maps.routes import maps
-    app.register_blueprint(classes)
-    app.register_blueprint(queues)
     app.register_blueprint(users)
+    app.register_blueprint(maps)
 
     db.create_all(app=app)
 

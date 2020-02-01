@@ -5,15 +5,19 @@ import requests
 from flask import Blueprint, request, current_app
 
 from backend import db
-from backend.models import User, Query
-from backend.users.utils import token_expiration_json_response
+from backend.models import User, Query, Location
+from backend.users.utils import token_expiration_json_response, insufficient_rights_json_response
+
+import pprint
 
 maps = Blueprint('maps', __name__)
+
 
 # Checker to see whether or not is the ser ver running
 @maps.route('/map', methods=['GET'])
 def queue_checker():
     return "Hello"
+
 
 @maps.route('/map/query/new', methods=['POST'])
 def create_new_query():
@@ -143,8 +147,8 @@ def create_query_result():
         Status code representing success status of the request
     message : str
         Message explaining the response status
-    polyline : str
-        Polyline representing points to visit - to be used by Google Maps
+    polylines : str
+        Polylines representing points to visit - to be used by Google Maps - one at a time
     """
     request_json = request.get_json()
     auth_token = request_json['auth_token']
@@ -157,7 +161,63 @@ def create_query_result():
         return json.dumps({'status': 3, 'message': "Requested query does not exist"})
     direction_raw_result = requests.post(f"{current_app.config['MAPS_DIRECTION_BASE']}?origin={query.entry_o}" +
                                          f"&destination={query.entry_d}&mode=driving" +
-                                         f"&key=AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg")
+                                         f"&key={current_app.config['GCP_API_KEY']}")
     direction_result = direction_raw_result.json()
-    polyline = direction_result['routes'][0]['legs'][0]['polyline']['points']
-    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polyline': polyline})
+    base_leg = direction_result['routes'][0]['legs'][0]
+    if base_leg.get('steps') is None:
+        polylines = [base_leg['polyline']['points']]
+    else:
+        steps = base_leg['steps']
+        polylines = [x['polyline']['points'] for x in steps]
+    # all_steps = direction_result['routes'][0]['legs'][0]['steps']
+    # pp = pprint.PrettyPrinter()
+    # pp.pprint(direction_result)
+    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polylines': polylines})
+
+
+@maps.route('/map/sponsor/loc/add', methods=['POST'])
+def add_sponsor_location():
+    """
+    Adds a sponsor location to the database
+
+    Method Type
+    -----------
+    POST
+
+    JSON Parameters
+    ---------------
+    auth_token : str
+        Authentication of the logged in user
+    location : str
+        Location to be added as sponsor location
+
+    Restrictions
+    ------------
+    User must be logged in
+    User must be a sponsor (access level = 1)
+
+    JSON Returns
+    ------------
+    status : int
+        Status code representing success status of the request
+    message : str
+        Message explaining the response status
+    """
+    request_json = request.get_json()
+    auth_token = request_json['auth_token']
+    user = User.verify_auth_token(auth_token)
+    if user is None:
+        return token_expiration_json_response
+    if user.access_level < 1:
+        return insufficient_rights_json_response
+    new_location = request_json['location']
+    place_search_raw_result = requests.post(f"{current_app.config['MAPS_PLACE_SEARCH_BASE']}?input={new_location}" +
+                                            f"&inputtype=textquery" +
+                                            f"&key={current_app.config['GCP_API_KEY']}")
+    place_search_result = place_search_raw_result.json()
+    lat = place_search_result['candidates'][0]['geometry']['location']['lat']
+    lng = place_search_result['candidates'][0]['geometry']['location']['lng']
+    location = Location(keyword=new_location, lat=lat, lng=lng, user_id=user.id)
+    db.session.add(location)
+    db.session.commit()
+    return json.dumps({'status': 0, 'message': "Sponsor Location Added Successfully"})

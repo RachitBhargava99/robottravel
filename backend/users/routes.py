@@ -3,9 +3,8 @@ import json
 from flask import Blueprint, request
 
 from backend import db, bcrypt
-from backend.models import User, Class, TeachingAssistant
-from backend.users.utils import send_reset_email, token_expiration_json_response, insufficient_rights_json_response, \
-    create_new_user, add_students
+from backend.models import User
+from backend.users.utils import send_reset_email, token_expiration_json_response, insufficient_rights_json_response
 
 users = Blueprint('users', __name__)
 
@@ -75,9 +74,11 @@ def login():
 def normal_register():
     """
     Enables user registration by adding the user to the database.
+
     Method Type
     -----------
     POST
+
     JSON Parameters
     ---------------
     name : str
@@ -86,9 +87,11 @@ def normal_register():
         email of the user
     password : str
         (un-hashed) password of the user
+
     Restrictions
     ------------
     User must not already be registered
+
     JSON Returns
     ------------
     status : int
@@ -97,12 +100,17 @@ def normal_register():
         Message explaining the response status
     """
     request_json = request.get_json()
+    print("Yo!")
     name = request_json['name']
     email = request_json['email']
     password = request_json['password']
-    creation_status = create_new_user(name=name, email=email, password=password)
-    if not creation_status:
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user is not None:
         return json.dumps({'status': 2, 'message': "User Already Exists"})
+    user = User(name=name, email=email, password=hashed_password)
+    db.session.add(user)
+    db.session.commit()
     return json.dumps({'status': 0, 'message': "User account created successfully"})
 
 
