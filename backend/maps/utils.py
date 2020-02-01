@@ -72,7 +72,8 @@ def nearbyPlace(coord, typ, fil):
 #params:
 #list of polylines made from tuples of (overall distance, list of coords)
 #threshold value for deviation percentage (the higher the threshold the lower the deviation)
-#radius of deviation, 
+#radius of deviation
+# TODO: Add fix for geopy library errors
 def pathDeviationPoints(polylines, threshold, typ, fil):
     #distance accumulator
     dist = 0
@@ -80,7 +81,7 @@ def pathDeviationPoints(polylines, threshold, typ, fil):
     devpoints = []
     points = []
     #compile the polylines into one array of lats/lngs
-    for line in polylines()
+    for line in polylines:
         points.append(polyline.decode(line))
     #accumulate distance and reset once threshold is reached
     for pre, cur in zip(points, points[1:]):

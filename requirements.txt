@@ -12,3 +12,4 @@ geocoder
 asyncio
 pyotp
 Flask-WTF
+geopy
