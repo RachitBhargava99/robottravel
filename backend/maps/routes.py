@@ -7,6 +7,7 @@ from flask import Blueprint, request, current_app
 from backend import db
 from backend.models import User, Query, Location
 from backend.users.utils import token_expiration_json_response, insufficient_rights_json_response
+from backend.maps.utils import pathDeviationPoints
 
 import pprint
 
@@ -169,10 +170,12 @@ def create_query_result():
     else:
         steps = base_leg['steps']
         polylines = [x['polyline']['points'] for x in steps]
+    deviations = pathDeviationPoints(polylines, 50, 'restaurant', 'american')
     # all_steps = direction_result['routes'][0]['legs'][0]['steps']
     # pp = pprint.PrettyPrinter()
     # pp.pprint(direction_result)
-    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polylines': polylines})
+    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'start': query.entry_o,
+                       'end': query.entry_d, 'deviations': deviations})
 
 
 @maps.route('/map/sponsor/loc/add', methods=['POST'])
