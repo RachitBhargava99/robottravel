@@ -171,3 +171,38 @@ class Query(db.Model):
         self.entry_o = entry_o
         self.entry_d = entry_d
         self.user_id = user_id
+
+
+class Tag(db.Model):
+    """
+    A database model class to store information about tags.
+
+    ...
+
+    Attributes
+    ----------
+    id : int
+        ID of the class
+    keyword : str
+        Keyword indicating user preference
+    user_id : str
+        User ID of the query creator, as stored in User table
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    keyword = db.Column(db.String(127), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __init__(self, keyword: str, user_id: int):
+        """
+        Parameters
+        ----------
+        entry_o : str
+            Origin location entry from user
+        entry_d : str
+            Destination Location entry from user
+        user_id : str
+            User ID of the query creator, as stored in User table
+        """
+        self.keyword = keyword
+        self.user_id = user_id

@@ -12,10 +12,12 @@ import pprint
 
 maps = Blueprint('maps', __name__)
 
+
 # Checker to see whether or not is the ser ver running
 @maps.route('/map', methods=['GET'])
 def queue_checker():
     return "Hello"
+
 
 @maps.route('/map/query/new', methods=['POST'])
 def create_new_query():
@@ -145,8 +147,8 @@ def create_query_result():
         Status code representing success status of the request
     message : str
         Message explaining the response status
-    polyline : str
-        Polyline representing points to visit - to be used by Google Maps
+    polylines : str
+        Polylines representing points to visit - to be used by Google Maps - one at a time
     """
     request_json = request.get_json()
     auth_token = request_json['auth_token']
@@ -161,8 +163,13 @@ def create_query_result():
                                          f"&destination={query.entry_d}&mode=driving" +
                                          f"&key={current_app.config['GCP_API_KEY']}")
     direction_result = direction_raw_result.json()
-    pp = pprint.PrettyPrinter()
-    pp.pprint(direction_result)
-
-    polyline = direction_result['routes'][0]['legs'][0]['polyline']['points']
-    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polyline': polyline})
+    base_leg = direction_result['routes'][0]['legs'][0]
+    if base_leg.get('steps') is None:
+        polylines = [base_leg['polyline']['points']]
+    else:
+        steps = base_leg['steps']
+        polylines = [x['polyline']['points'] for x in steps]
+    # all_steps = direction_result['routes'][0]['legs'][0]['steps']
+    # pp = pprint.PrettyPrinter()
+    # pp.pprint(direction_result)
+    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'polylines': polylines})
