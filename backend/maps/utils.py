@@ -63,11 +63,13 @@ def nearbyPlace(coord, typ, fil):
         "key"       : API_KEY
     }
     response = requests.get(URL, params=p)
-    print(response.status_code)
+    # print(response.json())
     if response.status_code != 200:
         print("Error, no response")
     else:
         jobj = response.json()
+        if len(jobj['results']) == 0:
+            return None
         res = jobj['results'][0]['geometry']['location']
         return res
 
@@ -84,7 +86,7 @@ def pathDeviationPoints(polylines, threshold, typ, fil):
     points = []
     #compile the polylines into one array of lats/lngs
     for line in polylines:
-        points.append(polyline.decode(line))
+        points += polyline.decode(line)
     #accumulate distance and reset once threshold is reached
     for pre, cur in zip(points, points[1:]):
         dist += geodesic(pre, cur).miles
@@ -99,6 +101,11 @@ def pathDeviationPoints(polylines, threshold, typ, fil):
                         flag = True
                         break
             if rand > 0.2 or not flag:
-                devpoints.append(nearbyPlace(cur, typ, fil))
+                dev_point = nearbyPlace(cur, typ, fil)
+                if dev_point is None:
+                    dist = 0
+                    continue
+                devpoints.append(dev_point)
+                print(dev_point)
                 dist = 0
     return devpoints

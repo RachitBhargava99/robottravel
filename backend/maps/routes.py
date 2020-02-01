@@ -170,7 +170,7 @@ def create_query_result():
     else:
         steps = base_leg['steps']
         polylines = [x['polyline']['points'] for x in steps]
-    deviations = pathDeviationPoints(polylines, 50, 'restaurant', 'american')
+    deviations = pathDeviationPoints(polylines, 15, 'restaurant', 'american')
     # all_steps = direction_result['routes'][0]['legs'][0]['steps']
     # pp = pprint.PrettyPrinter()
     # pp.pprint(direction_result)
