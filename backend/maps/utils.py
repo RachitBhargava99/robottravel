@@ -1,16 +1,19 @@
 import json
 import requests 
 import polyline
+import random
 from geopy.distance import geodesic
 from flask import current_app
 
-#current_app.config['GCP_API_KEY'] 
+from backend.models import Location
+
+# current_app.config['GCP_API_KEY']
 API_KEY = 'AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg' 
-URL = ('https://maps.googleapis.com/maps/api/place/nearbysearch/json?')
+URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?'
 
-#returns a dict of nearby lat and lng locations based on radius, latitude, longitude, type, and keywords/filters 
-#see here for list of types https://developers.google.com/places/web-service/supported_types
 
+# returns a dict of nearby lat and lng locations based on radius, latitude, longitude, type, and keywords/filters
+# see here for list of types https://developers.google.com/places/web-service/supported_types
 def nearbyPlaces(rad, coord, typ, fil):
     p = {
         "location"  : "{}, {}".format(coord['lat'], coord['lng']),
@@ -31,6 +34,7 @@ def nearbyPlaces(rad, coord, typ, fil):
         print(coords)
         return coords
 
+
 #params:
 #coords is of type dict { lat: float, long: float}
 #base is a tuple of (lat, lon)
@@ -47,7 +51,6 @@ def nearestCoord(coords, base):
             min_dist = dist
             nearest = loc
     return nearest
-
 
 
 def nearbyPlace(coord, typ, fil):
@@ -75,6 +78,7 @@ def nearbyPlace(coord, typ, fil):
 #radius of deviation
 # TODO: Add fix for geopy library errors
 def pathDeviationPoints(polylines, threshold, typ, fil):
+    sponsor_coordinates = [(x.lat, x.lng) for x in Location.query.all()]
     #distance accumulator
     dist = 0
     #deviation points and polyline points
@@ -87,6 +91,16 @@ def pathDeviationPoints(polylines, threshold, typ, fil):
     for pre, cur in zip(points, points[1:]):
         dist += geodesic(pre, cur).miles
         if dist >= threshold:
-            devpoints.append(nearbyPlace(cur, typ, fil))
-            dist = 0
+            rand = random.random()
+            flag = False
+            if rand <= 0.2:
+                for curr_sponsor in sponsor_coordinates:
+                    if geodesic(cur, curr_sponsor).miles < 25:
+                        devpoints.append(curr_sponsor)
+                        dist = 0
+                        flag = True
+                        break
+            if rand > 0.2 or not flag:
+                devpoints.append(nearbyPlace(cur, typ, fil))
+                dist = 0
     return devpoints
