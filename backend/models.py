@@ -11,9 +11,7 @@ from backend import db
 class User(db.Model, UserMixin):
     """
     A database model class to store information about users.
-
     ...
-
     Attributes
     ----------
     id : int
@@ -26,7 +24,6 @@ class User(db.Model, UserMixin):
         (Hashed) Password of the user
     access_level : int
         Flag indicating the permission level of the user
-
     Methods
     -------
     get_auth_token(expires_seconds=86400)
@@ -40,30 +37,36 @@ class User(db.Model, UserMixin):
     """
 
     id = db.Column(db.Integer, primary_key=True)
-    gt_id = db.Column(db.String(63), unique=False, nullable=False)
+    name = db.Column(db.String(127), nullable=False)
+    email = db.Column(db.String(63), unique=True, nullable=False)
+    password = db.Column(db.String(63), unique=False, nullable=False)
     access_level = db.Column(db.Integer, nullable=False, default=0)
 
-    def __init__(self, gt_id: str, access_level: int = 0):
+    def __init__(self, name: str, email: str, password: str, access_level: int = 0):
         """
         Parameters
         ----------
-        gt_id : str
+        name : str
+            Name of the user
+        email : str
+            Email of the user
+        password : str
             (Hashed) Password of the user
         access_level : int
             Flag indicating the permission level of the user
         """
-        self.gt_id = gt_id
+        self.name = name
+        self.email = email
+        self.password = password
         self.access_level = access_level
 
     def get_auth_token(self, expires_seconds: int = 3600) -> str:
         """
         Generates a new authentication token for the user.
-
         Parameters
         ----------
         expires_seconds : int, optional
             Number of seconds after which the token expires (default is 86400)
-
         Returns
         -------
         str
@@ -76,12 +79,10 @@ class User(db.Model, UserMixin):
     def verify_auth_token(token: str):
         """
         Verifies the authentication token for the user.
-
         Parameters
         ----------
         token : str
             Serialized authentication token provided to verify the user's identity
-
         Returns
         -------
         User
@@ -97,12 +98,10 @@ class User(db.Model, UserMixin):
     def get_reset_token(self, expires_seconds: int = 1800) -> str:
         """
         Generates a new password reset token for the user.
-
         Parameters
         ----------
         expires_seconds : int, optional
             Number of seconds after which the token expires (default is 86400)
-
         Returns
         -------
         str
@@ -115,12 +114,10 @@ class User(db.Model, UserMixin):
     def verify_reset_token(token: str):
         """
         Verifies the password reset token for the user.
-
         Parameters
         ----------
         token : str
             Serialized password reset token provided to verify the user's identity
-
         Returns
         -------
         User
