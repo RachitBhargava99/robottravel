@@ -55,7 +55,7 @@ def nearestCoord(coords, base):
 
 def nearbyPlace(coord, typ, fil):
     p = {
-        "location"  : "{}, {}".format(coord['lat'], coord['lng']),
+        "location"  : "{},{}".format(coord[0], coord[1]),
         "rankby"    : 'distance',
         "type"      : typ,
         "keyword"   : fil,
@@ -69,14 +69,12 @@ def nearbyPlace(coord, typ, fil):
     else:
         jobj = response.json()
         res = jobj['results'][0]['geometry']['location']
-        print(res)
         return res
 
 #params:
 #list of polylines made from tuples of (overall distance, list of coords)
 #threshold value for deviation percentage (the higher the threshold the lower the deviation)
-#radius of deviation
-# TODO: Add fix for geopy library errors
+#radius of deviation,
 def pathDeviationPoints(polylines, threshold, typ, fil):
     sponsor_coordinates = [(x.lat, x.lng) for x in Location.query.all()]
     #distance accumulator
