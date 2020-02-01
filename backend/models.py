@@ -185,7 +185,7 @@ class Tag(db.Model):
         ID of the class
     keyword : str
         Keyword indicating user preference
-    user_id : str
+    user_id : int
         User ID of the query creator, as stored in User table
     """
 
@@ -201,8 +201,53 @@ class Tag(db.Model):
             Origin location entry from user
         entry_d : str
             Destination Location entry from user
-        user_id : str
+        user_id : int
             User ID of the query creator, as stored in User table
         """
         self.keyword = keyword
+        self.user_id = user_id
+
+
+class Location(db.Model):
+    """
+    A database model class to store information about locations.
+
+    ...
+
+    Attributes
+    ----------
+    id : int
+        ID of the class
+    keyword : str
+        Keyword indicating user sponsor location
+    lat : float
+        Latitude of sponsor location
+    lng : float
+        Longitude of sponsor location
+    user_id : int
+        User ID of the query creator, as stored in User table
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    keyword = db.Column(db.String(127), nullable=False)
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __init__(self, keyword: str, lat: float, lng: float, user_id: int):
+        """
+        Parameters
+        ----------
+        keyword : str
+            Keyword indicating user sponsor location
+        lat : float
+            Latitude of sponsor location
+        lng : float
+            Longitude of sponsor location
+        user_id : int
+            User ID of the query creator, as stored in User table
+        """
+        self.keyword = keyword
+        self.lat = lat
+        self.lng = lng
         self.user_id = user_id
