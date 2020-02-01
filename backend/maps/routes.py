@@ -37,7 +37,6 @@ def create_new_query():
     Restrictions
     ------------
     User must be logged in
-    User must be a student in the class
 
     JSON Returns
     ------------
@@ -61,3 +60,8 @@ def create_new_query():
 
 # TODO: Create a function to delete an existing query - use query_id and make sure that no other user can delete
 #  other people's queries
+
+
+@maps.route('/map/query/result')
+def create_query_result():
+
