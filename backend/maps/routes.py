@@ -57,3 +57,7 @@ def create_new_query():
     db.session.add(new_query)
     db.session.commit()
     return json.dumps({'status': 0, 'message': "User query created successfully"})
+
+
+# TODO: Create a function to delete an existing query - use query_id and make sure that no other user can delete
+#  other people's queries
