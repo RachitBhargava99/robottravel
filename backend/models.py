@@ -137,9 +137,9 @@ class User(db.Model, UserMixin):
         return f"User ID {self.id}"
 
 
-class Class(db.Model):
+class Query(db.Model):
     """
-    A database model class to store information about users.
+    A database model class to store information about queries.
 
     ...
 
@@ -147,245 +147,30 @@ class Class(db.Model):
     ----------
     id : int
         ID of the class
-    course_code : str
-        Course Code
-    course_name : str
-        Course Name
-    instructor_id : str
-        Instructor ID, as stored in User table
+    entry_o : str
+        Origin location entry from user
+    entry_d : str
+        Destination Location entry from user
+    user_id : str
+        User ID of the query creator, as stored in User table
     """
 
     id = db.Column(db.Integer, primary_key=True)
-    course_code = db.Column(db.String(31), nullable=False)
-    course_name = db.Column(db.String(127), nullable=False)
-    no_show_secs = db.Column(db.Integer, nullable=False)
-    instructor_id = db.Column(db.Integer, db.ForeignKey('user.id'), default=0, nullable=False)
-
-    def __init__(self, code: str, name: str, instructor_id: int = 0, no_show_secs: int = 180):
-        """
-        Parameters
-        ----------
-        code : str
-            Course Code
-        name : str
-            Course Name
-        instructor_id : str
-            Instructor ID, as stored in User table
-        no_show_secs : int
-            No Show Seconds for the course
-        """
-        self.course_code = code
-        self.course_name = name
-        self.instructor_id = instructor_id
-        self.no_show_secs = no_show_secs
-
-
-class Instructor(db.Model):
-    """
-    A database model class to store information about instructors
-
-    ...
-
-    Attributes
-    ----------
-    id : int
-        ID of the teaching assistant
-    user_id : int
-        Instructor ID, as stored in User table
-    course_id : int
-        Course ID, as stored in Class table
-    """
-    id = db.Column(db.Integer, primary_key=True)
+    entry_o = db.Column(db.String(127), nullable=False)
+    entry_d = db.Column(db.String(127), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
 
-    def __init__(self, user_id, course_id):
+    def __init__(self, entry_o: str, entry_d: str, user_id: int):
         """
         Parameters
         ----------
-        user_id : int
-            Instructor ID, as stored in User table
-        course_id : int
-            Course ID, as stored in Class table
+        entry_o : str
+            Origin location entry from user
+        entry_d : str
+            Destination Location entry from user
+        user_id : str
+            User ID of the query creator, as stored in User table
         """
+        self.entry_o = entry_o
+        self.entry_d = entry_d
         self.user_id = user_id
-        self.course_id = course_id
-
-
-class TeachingAssistant(db.Model):
-    """
-    A database model class to store information about teaching assistants
-
-    ...
-
-    Attributes
-    ----------
-    id : int
-        ID of the teaching assistant
-    user_id : int
-        TA ID, as stored in User table
-    course_id : int
-        Course ID, as stored in Class table
-    online : bool
-        flag denoting whether or not is the TeachingAssistant online (on-duty)
-    busy : bool
-        flag denoting whether or not is the TeachingAssistant busy
-    account_status : bool
-        flag denoting whether or not is the account active
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    online = db.Column(db.Boolean, nullable=False, default=False)
-    busy = db.Column(db.Boolean, nullable=False, default=False)
-    account_status = db.Column(db.Boolean, nullable=False, default=False)
-
-    def __init__(self, user_id, course_id):
-        """
-        Parameters
-        ----------
-        user_id : int
-            TA ID, as stored in User table
-        course_id : int
-            Course ID, as stored in Class table
-        """
-        self.user_id = user_id
-        self.course_id = course_id
-        self.online = False
-        self.busy = False
-        self.account_status = True
-
-
-class Student(db.Model):
-    """
-    A database model class to store information about students
-
-    ...
-
-    Attributes
-    ----------
-    id : int
-        ID of the student
-    user_id : int
-        Student ID, as stored in User table
-    course_id : int
-        Course ID, as stored in Class table
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-
-    def __init__(self, user_id, course_id):
-        """
-        Parameters
-        ----------
-        user_id : int
-            Student ID, as stored in User table
-        course_id : int
-            Course ID, as stored in Class table
-        """
-        self.user_id = user_id
-        self.course_id = course_id
-
-
-class QueuePosition(db.Model):
-    """
-    A database model class to store information about active queue entries
-
-    ...
-
-    Attributes
-    ----------
-    id : int
-        ID of the student
-    user_id : int
-        Student ID, as stored in User table
-    course_id : int
-        Course ID, as stored in Class table
-    status : bool
-        Flag to denote whether or not is the student still in active queue
-            0 -> Need Help
-            1 -> Assigned to TA (waiting to show up)
-            2 -> Assigned to TA
-    timestamp : datetime
-        DateTime indicating the last update date and time
-    owner_id : int
-        ID of User managing the QueuePosition (usually the TeachingAssistant)
-            -1 denotes unassigned
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    queue_name = db.Column(db.String(63), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    status = db.Column(db.Integer, nullable=False, default=0)
-    entry_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now())
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now())
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=-1)
-
-    def __init__(self, user_id, queue_name, course_id):
-        """
-        Parameters
-        ----------
-        user_id : int
-            Student ID, as stored in User table
-        queue_name : str
-            Queue Name to be used in the database to anonymize the user
-        course_id : int
-            Course ID, as stored in Class table
-        """
-        self.user_id = user_id
-        self.queue_name = queue_name
-        self.course_id = course_id
-        self.status = 0
-        self.entry_timestamp = datetime.now()
-        self.timestamp = datetime.now()
-        self.owner_id = -1
-
-
-class Record(db.Model):
-    """
-    A database model class to store information about resolved / closed queue entries
-
-    ...
-
-    Attributes
-    ----------
-    id : int
-        ID of the student
-    opener_id : int
-        Student ID, as stored in User table
-    closer_id : int
-        Student ID, as stored in User table
-    course_id : int
-        Course ID, as stored in Class table
-    reason_code : int
-        Reason code denoting the reason why the opener was removed from queue
-            0 -> Resolved Normally
-            1 -> Time Out
-            2 -> Self-Removal
-            3 -> No Show
-            4 -> Requeue
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    opener_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    closer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    course_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    reason_code = db.Column(db.Integer, nullable=False, default=0)
-
-    def __init__(self, opener_id, closer_id, course_id, reason_code):
-        """
-        Parameters
-        ----------
-        opener_id : int
-            Student ID, as stored in User table
-        closer_id : int
-            Student ID, as stored in User table
-        course_id : int
-            Course ID, as stored in Class table
-        reason_code : int
-            Reason code denoting the reason why the opener was removed from queue
-        """
-        self.opener_id = opener_id
-        self.closer_id = closer_id
-        self.course_id = course_id
-        self.reason_code = reason_code
