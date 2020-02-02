@@ -4,6 +4,8 @@ from backend.maps.utils import get_deviation_points, create_query
 from backend import db
 import json
 
+from google.cloud import pubsub_v1
+
 webhooks = Blueprint('webhooks', __name__)
 
 
@@ -58,6 +60,9 @@ def get_webhook_request():
             threshold = request_json['queryResult']['parameters']['fd']
             last_query.fd = threshold
             db.session.commit()
+            publisher = pubsub_v1.PublisherClient()
+            topic_name = 'projects/tester-267001/topics/compute-query'
+            publisher.publish(topic_name, bytes(f"{last_query.id}", 'utf-8'))
             message = "Information updated - what would you be most interested in visiting in this trip?"
 
     elif intent == "Last Result":

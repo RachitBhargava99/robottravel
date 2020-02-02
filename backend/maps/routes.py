@@ -5,11 +5,12 @@ import requests
 from flask import Blueprint, request, current_app
 
 from backend import db
-from backend.models import User, Query, Location
+from backend.models import User, Query, Location, Tag
 from backend.users.utils import token_expiration_json_response, insufficient_rights_json_response
 from backend.maps.utils import pathDeviationPoints, compute_deviation_points, get_deviation_points, create_query
 
 import pprint
+import polyline
 
 maps = Blueprint('maps', __name__)
 
@@ -37,6 +38,8 @@ def create_new_query():
         Origin location entry from user
     entry_d : str
         Destination location entry from user
+    distance : float
+        Minimum distance between two stopovers
 
     Restrictions
     ------------
@@ -56,7 +59,8 @@ def create_new_query():
         return token_expiration_json_response
     entry_o = request_json['entry_o']
     entry_d = request_json['entry_d']
-    create_query(entry_o=entry_o, entry_d=entry_d, user_id=user.id)
+    distance = request_json['distance']
+    create_query(entry_o=entry_o, entry_d=entry_d, user_id=user.id, manual=True, fd=distance)
     return json.dumps({'status': 0, 'message': "User query created successfully"})
 
 
@@ -132,7 +136,8 @@ def compute_query_result(query_id: int):
     else:
         steps = base_leg['steps']
         polylines = [x['polyline']['points'] for x in steps]
-    deviations = pathDeviationPoints(polylines, query.fd, ['restaurant', 'atm'], '')
+    deviations = pathDeviationPoints(polylines, query.fd,
+                                     [x.keyword for x in Tag.query.filter_by(query_id=query.id)], '')
     for curr_deviation in deviations:
         new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
                                 user_id=query.user_id, query_id=query.id)
@@ -176,16 +181,32 @@ def create_query_result():
     user = User.verify_auth_token(auth_token)
     if user is None:
         return token_expiration_json_response
-    query_id = request_json['query_id']
-    query = Query.query.filter_by(id=query_id).first()
+    if request_json.get('query_id') is None:
+        query = Query.query.filter_by(user_id=user.id).order_by(Query.id.desc()).first()
+    else:
+        query_id = request_json['query_id']
+        query = Query.query.filter_by(id=query_id).first()
     if query is None:
         return json.dumps({'status': 3, 'message': "Requested query does not exist"})
-    deviations = get_deviation_points(query_id)
+    deviations = get_deviation_points(query.id)
     # all_steps = direction_result['routes'][0]['legs'][0]['steps']
     # pp = pprint.PrettyPrinter()
     # pp.pprint(direction_result)
+    param_dict = {
+        'origin': query.entry_o,
+        'destination': query.entry_d,
+        'key': current_app.config['GCP_API_KEY']
+    }
+    if len(deviations) != 0:
+        param_dict['waypoints'] = f"via:enc:{polyline.encode([(x['lat'], x['lng']) for x in deviations])}:"
+    distance_raw_request = requests.get(current_app.config['MAPS_DIRECTION_BASE'], params=param_dict)
+    distance_request = distance_raw_request.json()
+    # print(distance_request)
+    duration = sum(x['duration']['value'] for x in distance_request['routes'][0]['legs'][0]['steps'])
+    distance = sum(x['distance']['value'] for x in distance_request['routes'][0]['legs'][0]['steps'])
     return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'start': query.entry_o,
-                       'end': query.entry_d, 'deviations': deviations})
+                       'end': query.entry_d, 'deviations': deviations, 'time': f"{duration // 3600}:{(duration - (duration // 3600) * 3600) // 60}",
+                       'distance': f"{round(distance * 0.621371 / 1000, 2)}"})
 
 
 @maps.route('/map/query/get', methods=['GET', 'POST'])
@@ -222,6 +243,8 @@ def get_user_query():
             Start point for the query
         end : str
             End point for the query
+        distance : float
+            Float representing the minimum focus distance
     """
     request_json = request.get_json()
     auth_token = request_json['auth_token']
@@ -230,26 +253,16 @@ def get_user_query():
         return token_expiration_json_response
     all_queries = Query.query.all()
     return json.dumps({'status': 0, 'message': "Request fulfilled successfully",
-                       'queries': [{'id': x.id, 'start': x.entry_o, 'end': x.entry_d} for x in all_queries]})
+                       'queries': [{'id': x.id, 'start': x.entry_o,
+                                    'end': x.entry_d, 'distance': x.fd} for x in all_queries]})
 
 
 @maps.route('/map/query/types', methods=['GET'])
 def get_query_types():
-    all_types = ["accounting", "airport", "amusement_park", "aquarium", "art_gallery", "atm", "bakery", "bank", "bar",
-                 "beauty_salon", "bicycle_store", "book_store", "bowling_alley", "bus_station", "cafe", "campground",
-                 "car_dealer", "car_rental", "car_repair", "car_wash", "casino", "cemetery", "church", "city_hall",
-                 "clothing_store", "convenience_store", "courthouse", "dentist", "department_store", "doctor",
-                 "drugstore", "electrician", "electronics_store", "embassy", "fire_station", "florist",
-                 "funeral_home", "furniture_store", "gas_station", "grocery_or_supermarket", "gym", "hair_care",
-                 "hardware_store", "hindu_temple", "home_goods_store", "hospital", "insurance_agency",
-                 "jewelry_store", "laundry", "lawyer", "library", "light_rail_station", "liquor_store",
-                 "local_government_office", "locksmith", "lodging", "meal_delivery", "meal_takeaway", "mosque",
-                 "movie_rental", "movie_theater", "moving_company", "museum", "night_club", "painter", "park",
-                 "parking", "pet_store", "pharmacy", "physiotherapist", "plumber", "police", "post_office",
-                 "primary_school", "real_estate_agency", "rest_stop", "restaurant", "roofing_contractor", "rv_park",
-                 "school", "secondary_school", "shoe_store", "shopping_mall", "spa", "stadium", "storage", "store",
-                 "subway_station", "supermarket", "synagogue", "taxi_stand", "tourist_attraction", "train_station",
-                 "transit_station", "travel_agency", "university", "veterinary_care", "zoo"]
+    all_types = ["amusement_park", "aquarium", "art_gallery", "bakery", "book_store", "bowling_alley", "cafe",
+                 "campground", "casino", "church", "department_store", "gas_station", "hindu_temple", "lodging",
+                 "mosque", "museum", "night_club", "park", "rest_stop", "restaurant", "rv_park", "shopping_mall",
+                 "stadium", "synagogue", "tourist_attraction", "university", "zoo"]
     return json.dumps({'status': 0, 'message': "Queries Extracted Successfully", 'types': all_types})
 
 

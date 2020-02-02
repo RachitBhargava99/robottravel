@@ -8,7 +8,7 @@ from threading import Thread
 from google.cloud import pubsub_v1
 
 from backend import db
-from backend.models import Query, Location
+from backend.models import Query, Location, Tag
 
 # current_app.config['GCP_API_KEY']
 API_KEY = 'AIzaSyDYUOtB-7CuX7Ex_BkbpOW4jP7redSjtTg' 
@@ -77,7 +77,6 @@ def nearbyPlace(coord, types, fil):
             "rankby"    : 'distance',
             "type"      : typ,
             "keyword"   : fil,
-            "opennow"   : 'True',
             "key"       : API_KEY
         }
         response = requests.get(URL, params=p)
@@ -129,7 +128,7 @@ def pathDeviationPoints(polylines, threshold, types, fil):
             if rand > 0.2 or not flag:
                 dev_points = nearbyPlace(cur, types, fil)
                 if len(dev_points) == 0:
-                    dist = 0
+                    dist *= 0.75
                     continue
                 nearest_dev_point = nearestCoord(dev_points, cur)
                 devpoints.append(nearest_dev_point)
@@ -165,17 +164,22 @@ def get_deviation_points(query_id):
     return all_deviation_points
 
 
-def create_query(entry_o, entry_d, user_id):
+def create_query(entry_o, entry_d, user_id, manual=False, keywords=['tourist_attraction', 'museum'], fd=50):
     old_query = Query.query.filter_by(entry_o=entry_o, entry_d=entry_d, user_id=user_id).first()
     if old_query is not None:
         return False
-    new_query = Query(entry_o=entry_o, entry_d=entry_d, user_id=user_id)
+    new_query = Query(entry_o=entry_o, entry_d=entry_d, user_id=user_id, fd=fd)
     db.session.add(new_query)
     db.session.commit()
-    new_query = Query.query.filter_by(entry_o=entry_o, entry_d=entry_d, user_id=user_id).first()
-    publisher = pubsub_v1.PublisherClient()
-    topic_name = 'projects/tester-267001/topics/compute-query'
-    publisher.publish(topic_name, bytes(f"{new_query.id}", 'utf-8'))
+    new_query = Query.query.filter_by(entry_o=entry_o, entry_d=entry_d, user_id=user_id, fd=fd).first()
+    for keyword in keywords:
+        new_tag = Tag(keyword, new_query.id, user_id)
+        db.session.add(new_tag)
+    db.session.commit()
+    if manual:
+        publisher = pubsub_v1.PublisherClient()
+        topic_name = 'projects/tester-267001/topics/compute-query'
+        publisher.publish(topic_name, bytes(f"{new_query.id}", 'utf-8'))
     return True
     # parent = client.queue_path('thinger', 'us-east1', 'queue-blue')
     # task = {
