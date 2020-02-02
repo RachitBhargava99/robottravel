@@ -5,6 +5,7 @@ import random
 from geopy.distance import geodesic
 from flask import current_app
 from threading import Thread
+from google.cloud import pubsub_v1
 
 from backend import db
 from backend.models import Query, Location
@@ -91,7 +92,8 @@ def nearbyPlace(coord, types, fil):
             for x in jobj['results']:
                 temp = x['geometry']['location']
                 temp['place_id'] = x['place_id']
-                temp['name'] = x['name'] + ', ' + x['formatted_address']
+                temp['name'] = x['name'] + (', ' + x['formatted_address']
+                                            if x.get('formatted_address') is not None else '')
                 res.append(temp)
             results += res
     return results
@@ -137,29 +139,29 @@ def pathDeviationPoints(polylines, threshold, types, fil):
 
 
 def compute_deviation_points(query):
-    with current_app.app_context():
-        direction_raw_result = requests.post(f"{current_app.config['MAPS_DIRECTION_BASE']}?origin={query.entry_o}" +
-                                             f"&destination={query.entry_d}&mode=driving" +
-                                             f"&key={current_app.config['GCP_API_KEY']}")
-        direction_result = direction_raw_result.json()
-        base_leg = direction_result['routes'][0]['legs'][0]
-        if base_leg.get('steps') is None:
-            polylines = [base_leg['polyline']['points']]
-        else:
-            steps = base_leg['steps']
-            polylines = [x['polyline']['points'] for x in steps]
-        deviations = pathDeviationPoints(polylines, 100, ['restaurant', 'atm'], '')
-        for curr_deviation in deviations:
-            new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
-                                    user_id=user.id, query_id=query.id)
-            db.session.add(new_location)
-            db.session.commit()
-        return deviations
+    direction_raw_result = requests.post(f"{current_app.config['MAPS_DIRECTION_BASE']}?origin={query.entry_o}" +
+                                         f"&destination={query.entry_d}&mode=driving" +
+                                         f"&key={current_app.config['GCP_API_KEY']}")
+    direction_result = direction_raw_result.json()
+    base_leg = direction_result['routes'][0]['legs'][0]
+    if base_leg.get('steps') is None:
+        polylines = [base_leg['polyline']['points']]
+    else:
+        steps = base_leg['steps']
+        polylines = [x['polyline']['points'] for x in steps]
+    deviations = pathDeviationPoints(polylines, 100, ['restaurant', 'atm'], '')
+    for curr_deviation in deviations:
+        new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
+                                user_id=user.id, query_id=query.id)
+        db.session.add(new_location)
+        db.session.commit()
+    return deviations
 
 
 def get_deviation_points(query_id):
+    print(query_id)
     all_deviation_points = [{'name': x.keyword, 'lat': x.lat, 'lng': x.lng} for x in
-                            Location.query.filter_by(query_id=query_id)]
+                            Location.query.filter_by(query_id=query_id, is_sp=False)]
     return all_deviation_points
 
 
@@ -168,4 +170,19 @@ def create_query(entry_o, entry_d, user_id):
     db.session.add(new_query)
     db.session.commit()
     new_query = Query.query.filter_by(entry_o=entry_o, entry_d=entry_d, user_id=user_id).first()
-    Thread(target=compute_deviation_points, kwargs={'query': new_query}, name=f"deviation_{new_query.id}").start()
+    publisher = pubsub_v1.PublisherClient()
+    topic_name = 'projects/tester-267001/topics/compute-query'
+    publisher.publish(topic_name, bytes(f"{new_query.id}", 'utf-8'))
+    # parent = client.queue_path('thinger', 'us-east1', 'queue-blue')
+    # task = {
+    #     'app_engine_http_request': {
+    #         'http_method': 'GET',
+    #         'relative_uri': f'/map/query/compute/{new_query.id}',
+    #         'app_engine_routing': {
+    #             'service': 'worker'
+    #         }
+    #     }
+    # }
+    # response = client.create_task(parent, task)
+    # eta = response.schedule_time.ToDateTime().strftime("%m/%d/%Y, %H:%M:%S")
+    # print(f'Task {response.name} enqueued, ETA {eta}.')

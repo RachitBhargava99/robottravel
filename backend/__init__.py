@@ -25,8 +25,12 @@ def create_app():
 
     from backend.users.routes import users
     from backend.maps.routes import maps
+    from backend.tags.routes import tags
+    from backend.webhooks.routes import webhooks
     app.register_blueprint(users)
     app.register_blueprint(maps)
+    app.register_blueprint(tags)
+    app.register_blueprint(webhooks)
 
     db.create_all(app=app)
 

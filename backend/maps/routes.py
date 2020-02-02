@@ -119,6 +119,28 @@ def delete_query():
     return json.dumps({'status': 0, 'message': "User query deleted successfully"})
 
 
+@maps.route('/map/query/compute/<int:query_id>', methods=['GET'])
+def compute_query_result(query_id: int):
+    query = Query.query.filter_by(id=query_id).first()
+    direction_raw_result = requests.post(f"{current_app.config['MAPS_DIRECTION_BASE']}?origin={query.entry_o}" +
+                                         f"&destination={query.entry_d}&mode=driving" +
+                                         f"&key={current_app.config['GCP_API_KEY']}")
+    direction_result = direction_raw_result.json()
+    base_leg = direction_result['routes'][0]['legs'][0]
+    if base_leg.get('steps') is None:
+        polylines = [base_leg['polyline']['points']]
+    else:
+        steps = base_leg['steps']
+        polylines = [x['polyline']['points'] for x in steps]
+    deviations = pathDeviationPoints(polylines, 100, ['restaurant', 'atm'], '')
+    for curr_deviation in deviations:
+        new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
+                                user_id=query.user_id, query_id=query.id)
+        db.session.add(new_location)
+        db.session.commit()
+    return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'deviations': deviations})
+
+
 @maps.route('/map/query/result', methods=['POST'])
 def create_query_result():
     """

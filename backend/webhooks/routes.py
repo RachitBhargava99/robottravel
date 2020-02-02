@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from backend.models import User, Query
+from backend.maps.utils import get_deviation_points
 from backend import db
 import json
 
@@ -54,31 +55,10 @@ def get_webhook_request():
         if user is None:
             message = "The user is not registered."
         else:
-            category = request_json['queryResult']['parameters']['Categories'].lower()
-            amount = request_json['queryResult']['parameters']['unit-currency']['amount']
-            prediction = classify_spending_util(amount, cat_to_num_dict[category])
-            message = "Sounds like a necessary purchase, go ahead!"\
-                if prediction == 'N' else "This looks like a luxury purchase, are you sure you need make this?"
-
-    elif intent == "Add Spending":
-        user = User.query.filter_by(slack_session=session_id).first()
-        if user is None:
-            message = "The user is not registered."
-        else:
-            category = request_json['queryResult']['parameters']['Categories'].lower()
-
-            amount = request_json['queryResult']['parameters']['unit-currency']['amount']
-            description = "Added using Chatbot"
-            message = add_spending_util(user, description, cat_to_num_dict[category], amount)['message']
-
-    elif intent == "Money Translator":
-        user = User.query.filter_by(slack_session=session_id).first()
-        if user is None:
-            message = "The user is not registered."
-        else:
-            amount = request_json['queryResult']['parameters']['unit-currency']['amount']
-            extra_weeks = simulate_spending_util(user, amount)
-            message = f"${amount} is equivalent to {round(extra_weeks, 2)} weeks of savings."
+            last_query = Query.query.filter_by(user_id=user.id).order_by('-id')[0]
+            deviations = get_deviation_points(last_query.id)
+            message = ', '.join([x['name'] for x in deviations])
+            message = f"Suggested stopovers: {message}"
 
     else:
         message = "I am sorry, I did not get that."

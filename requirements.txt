@@ -13,3 +13,6 @@ asyncio
 pyotp
 Flask-WTF
 geopy
+polyline
+gcloud
+google-cloud-pubsub
