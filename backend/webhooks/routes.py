@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from backend.models import User, Query
-from backend.maps.utils import get_deviation_points
+from backend.maps.utils import get_deviation_points, create_query
 from backend import db
 import json
 
@@ -42,20 +42,30 @@ def get_webhook_request():
         if user is None:
             message = "Please log in."
         else:
-            start = request_json['queryResult']['parameters']['Start']
-            end = request_json['queryResult']['parameters']['End']
-            new_query = Query(entry_o=start, entry_d=end, user_id=user.id)
-            db.session.add(new_query)
+            start = request_json['queryResult']['outputContexts'][0]['parameters']['Start.original']
+            end = request_json['queryResult']['outputContexts'][0]['parameters']['End.original']
+            if not create_query(start, end, user.id):
+                message = "Query already exists"
+            else:
+                message = "Query created successfully - how many miles are you willing to travel before taking a break?"
+
+    elif intent == "Add Threshold":
+        user = User.query.filter_by(slack_session=session_id).first()
+        if user is None:
+            message = "The user is not registered."
+        else:
+            last_query = Query.query.filter_by(user_id=user.id).order_by(Query.id.desc()).first()
+            threshold = request_json['queryResult']['parameters']['fd']
+            last_query.fd = threshold
             db.session.commit()
-            message = get_health_message("Query created successfully - calculating ideal stopovers" +
-                                         " - please check again in a bit for results")
+            message = "Information updated - what would you be most interested in visiting in this trip?"
 
     elif intent == "Last Result":
         user = User.query.filter_by(slack_session=session_id).first()
         if user is None:
             message = "The user is not registered."
         else:
-            last_query = Query.query.filter_by(user_id=user.id).order_by('-id')[0]
+            last_query = Query.query.filter_by(user_id=user.id).order_by(Query.id.desc()).first()
             deviations = get_deviation_points(last_query.id)
             message = ', '.join([x['name'] for x in deviations])
             message = f"Suggested stopovers: {message}"

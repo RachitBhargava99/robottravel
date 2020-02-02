@@ -151,14 +151,17 @@ class Query(db.Model):
         Destination Location entry from user
     user_id : str
         User ID of the query creator, as stored in User table
+    fd      : float
+        Threshold distance before a recommendation is made for a stopover
     """
 
     id = db.Column(db.Integer, primary_key=True)
     entry_o = db.Column(db.String(127), nullable=False)
     entry_d = db.Column(db.String(127), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    fd = db.Column(db.Float, nullable=False)
 
-    def __init__(self, entry_o: str, entry_d: str, user_id: int):
+    def __init__(self, entry_o: str, entry_d: str, user_id: int, fd: float = 50):
         """
         Parameters
         ----------
@@ -172,6 +175,7 @@ class Query(db.Model):
         self.entry_o = entry_o
         self.entry_d = entry_d
         self.user_id = user_id
+        self.fd = fd
 
 
 class Tag(db.Model):

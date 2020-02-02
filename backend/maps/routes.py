@@ -132,7 +132,7 @@ def compute_query_result(query_id: int):
     else:
         steps = base_leg['steps']
         polylines = [x['polyline']['points'] for x in steps]
-    deviations = pathDeviationPoints(polylines, 100, ['restaurant', 'atm'], '')
+    deviations = pathDeviationPoints(polylines, query.fd, ['restaurant', 'atm'], '')
     for curr_deviation in deviations:
         new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
                                 user_id=query.user_id, query_id=query.id)
@@ -186,6 +186,51 @@ def create_query_result():
     # pp.pprint(direction_result)
     return json.dumps({'status': 0, 'message': "Basic Route Created Successfully", 'start': query.entry_o,
                        'end': query.entry_d, 'deviations': deviations})
+
+
+@maps.route('/map/query/get', methods=['GET', 'POST'])
+def get_user_query():
+    """
+    Gets all the queries of the user.
+
+    Method Type
+    -----------
+    POST
+
+    JSON Parameters
+    ---------------
+    auth_token : str
+        Authentication of the logged in user
+    query_id : int
+        ID of the query for which we need to
+
+    Restrictions
+    ------------
+    User must be logged in
+    Query must belong to the logged in user
+
+    JSON Returns
+    ------------
+    status : int
+        Status code representing success status of the request
+    message : str
+        Message explaining the response status
+    queries : list(dict(str -> any))
+        id : int
+            ID of the query, as stored in database
+        start : str
+            Start point for the query
+        end : str
+            End point for the query
+    """
+    request_json = request.get_json()
+    auth_token = request_json['auth_token']
+    user = User.verify_auth_token(auth_token)
+    if user is None:
+        return token_expiration_json_response
+    all_queries = Query.query.all()
+    return json.dumps({'status': 0, 'message': "Request fulfilled successfully",
+                       'queries': [{'id': x.id, 'start': x.entry_o, 'end': x.entry_d} for x in all_queries]})
 
 
 @maps.route('/map/query/types', methods=['GET'])

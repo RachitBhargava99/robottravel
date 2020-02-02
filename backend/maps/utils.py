@@ -149,7 +149,7 @@ def compute_deviation_points(query):
     else:
         steps = base_leg['steps']
         polylines = [x['polyline']['points'] for x in steps]
-    deviations = pathDeviationPoints(polylines, 100, ['restaurant', 'atm'], '')
+    deviations = pathDeviationPoints(polylines, 25, ['restaurant', 'atm'], '')
     for curr_deviation in deviations:
         new_location = Location(keyword=curr_deviation['name'], lat=curr_deviation['lat'], lng=curr_deviation['lng'],
                                 user_id=user.id, query_id=query.id)
@@ -166,6 +166,9 @@ def get_deviation_points(query_id):
 
 
 def create_query(entry_o, entry_d, user_id):
+    old_query = Query.query.filter_by(entry_o=entry_o, entry_d=entry_d, user_id=user_id).first()
+    if old_query is not None:
+        return False
     new_query = Query(entry_o=entry_o, entry_d=entry_d, user_id=user_id)
     db.session.add(new_query)
     db.session.commit()
@@ -173,6 +176,7 @@ def create_query(entry_o, entry_d, user_id):
     publisher = pubsub_v1.PublisherClient()
     topic_name = 'projects/tester-267001/topics/compute-query'
     publisher.publish(topic_name, bytes(f"{new_query.id}", 'utf-8'))
+    return True
     # parent = client.queue_path('thinger', 'us-east1', 'queue-blue')
     # task = {
     #     'app_engine_http_request': {
